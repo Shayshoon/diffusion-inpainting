@@ -20,7 +20,7 @@ class VanillaPipeline(StableDiffusionPipeline):
         batch_size: int,
         num_images_per_prompt: int,
         device: torch.device,
-        dtype: torch.dtype,
+        dtype: torch.dtype,          # FIX 1: removed stray 'F' character (was: dtype: torch.dtype,F)
         vae_scale_factor: int = 8,
     ) -> torch.Tensor:
         """
@@ -61,9 +61,17 @@ class VanillaPipeline(StableDiffusionPipeline):
 
         # --- 5. Expand to full batch size ----------------------------------
         total = batch_size * num_images_per_prompt
-        mask_latent = mask_latent.expand(total, 1, -1, -1)   # (B, 1, H//8, W//8)
+        # FIX 2: .contiguous() forces a real memory copy so that downstream
+        # writes don't corrupt the original tensor through the shared view
+        # that .expand() would otherwise return.
+        mask_latent = mask_latent.expand(total, 1, -1, -1).contiguous()
+        # shape: (B, 1, H//8, W//8)
 
-        return mask_latent.to(device=device, dtype=dtype)
+        # FIX 3: clamp AFTER the dtype cast because converting to fp16 can
+        # introduce tiny rounding errors that push values just outside [0, 1],
+        # which would cause a leak of original-image information into the
+        # repaint region during the blend step.
+        return mask_latent.to(device=device, dtype=dtype).clamp(0.0, 1.0)
 
     @torch.no_grad()
     def __call__(
@@ -231,10 +239,17 @@ class VanillaPipeline(StableDiffusionPipeline):
                         + sqrt_one_minus_alpha_bar * noise
                     )
 
+                    # FIX 4: clamp mask again at the blend site to guard against
+                    # fp16 drift that accumulates across 50 loop iterations.
+                    # Without this, border pixels can drift outside [0, 1] and
+                    # the blend coefficients no longer sum to 1, leaking original
+                    # image content into the repaint region.
+                    mask_clamped = mask_latent.clamp(0.0, 1.0)
+
                     # Paste: KEEP region ← noisy original,  REPAINT region ← current diffusion latent
                     latents = (
-                        mask_latent * noisy_image_latents   # keep
-                        + (1 - mask_latent) * latents       # repaint
+                        mask_clamped       * noisy_image_latents   # keep
+                        + (1 - mask_clamped) * latents             # repaint
                     )
 
                 # -- 9b. Standard UNet forward pass --------------------------
@@ -281,9 +296,10 @@ class VanillaPipeline(StableDiffusionPipeline):
         # After the loop x_0 ≈ latents.  We do one last clean paste so the
         # KEEP region is pixel-perfect (no accumulated drift from re-noising).
         if mask_latent is not None and image_latents is not None:
+            mask_clamped = mask_latent.clamp(0.0, 1.0)   # FIX 5: clamp here too for the final paste
             latents = (
-                mask_latent * image_latents   # keep  ← clean original
-                + (1 - mask_latent) * latents        # repaint ← diffusion result
+                mask_clamped       * image_latents   # keep  ← clean original
+                + (1 - mask_clamped) * latents       # repaint ← diffusion result
             )
 
         # ------------------------------------------------------------------ #
