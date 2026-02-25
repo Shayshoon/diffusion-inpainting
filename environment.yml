@@ -1,0 +1,22 @@
+name: proj
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pytorch=2.5.1
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.4
+  - matplotlib
+  - jupyter
+  - python-dotenv
+  - numpy
+  - pillow
+  - pip
+  - pip:
+    - diffusers
+    - transformers
+    - accelerate
+    - safetensors

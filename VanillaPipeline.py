@@ -1,6 +1,5 @@
 import torch
 import numpy as np
-import inspect
 from typing import Any, Callable, Dict, List, Optional, Union
 from PIL import Image
 
@@ -214,7 +213,8 @@ class VanillaPipeline(StableDiffusionPipeline):
 
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
-
+                if torch.isnan(latents).any():
+                    print("NaNs detected in latents at step", i)
                 # -- 9a. Blend: re-apply original image noise under KEEP mask --
                 #
                 # At timestep t the "clean" original image in latent space should

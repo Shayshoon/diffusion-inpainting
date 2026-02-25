@@ -4,13 +4,15 @@ import requests
 from io import BytesIO
 from pathlib import Path
 from PIL import Image, ImageOps, ImageDraw
+from dotenv import load_dotenv
 
 import torch
 from diffusers import DDPMScheduler
+from huggingface_hub import login
 
 from VanillaPipeline import VanillaPipeline
-
 from mask_utils import get_square, overlay_mask, get_grid, create_comparison_canvas
+
 
 def read_file(file_path):
     try:
@@ -53,9 +55,10 @@ def run_pipeline(pipeline_name, src="./media", dst="./results"):
     pipeline = pipelines[pipeline_name]
     
     scheduler = DDPMScheduler.from_pretrained(model_id, subfolder="scheduler")
-    pipe = pipeline.from_pretrained(model_id, scheduler=scheduler, torch_dtype=torch.float16)
+    pipe = pipeline.from_pretrained(model_id, scheduler=scheduler, torch_dtype=torch.float32)
     pipe = pipe.to("cuda")
-    
+    pipe.vae.to(dtype=torch.float32)
+
     for source, mask, prompt, file_name in mask_pair_generator(src):
         print(f"Processing {file_name}...")
         
@@ -86,5 +89,10 @@ if __name__ == "__main__":
     parser.add_argument("--src", type=str, default="./media", help="Source media directory")
     parser.add_argument("--dst", type=str, default="./results", help="Destination media directory")
     args = parser.parse_args()
+    
+    load_dotenv()
+    token = os.getenv('HF_TOKEN')
+    if token:
+        login()
     
     run_pipeline(args.pipeline, args.src, args.dst)
