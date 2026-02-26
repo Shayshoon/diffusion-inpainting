@@ -39,7 +39,7 @@ def create_comparison_canvas(source_img, mask_img,
         canvas.paste(result_image, (2*w + 2*padding, 0))
 
     draw = ImageDraw.Draw(canvas)
-    font = ImageFont.truetype("./utils/Roboto-Regular.ttf", 24)
+    font = ImageFont.truetype("./assets/Roboto-Regular.ttf", 24)
     left, top, right, bottom = draw.textbbox((0, 0), text_label, font=font)
     text_width = right - left
     

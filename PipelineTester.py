@@ -1,17 +1,15 @@
 import os
 import argparse
-import requests
-from io import BytesIO
 from pathlib import Path
-from PIL import Image, ImageOps, ImageDraw
+from PIL import Image
 from dotenv import load_dotenv
 
 import torch
 from diffusers import DDPMScheduler
 from huggingface_hub import login
 
-from VanillaPipeline import VanillaPipeline
-from mask_utils import get_square, overlay_mask, get_grid, create_comparison_canvas
+from pipelines.VanillaPipeline import VanillaPipeline
+from utils.image import get_square, create_comparison_canvas
 
 
 def read_file(file_path):
