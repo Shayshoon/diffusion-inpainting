@@ -10,7 +10,7 @@ from huggingface_hub import login
 
 from pipelines.VanillaPipeline import VanillaPipeline
 from utils.image import get_square, create_comparison_canvas
-
+from metrics import BackgroundPreservation
 
 def read_file(file_path):
     try:
@@ -24,10 +24,9 @@ def read_file(file_path):
         
 def mask_pair_generator(directory):
     """
-    Yields (source_pil, mask_pil, filename) for every pair found.
+    Yields (source_pil, mask_pil, prompt, filename) for every sample.
     """
     files = os.listdir(directory)
-    # Filter for base images only
     base_images = [f for f in files if ".mask." not in f and f.lower().endswith(('.jpg', '.jpeg', '.png'))]
 
     for filename in base_images:
@@ -68,7 +67,6 @@ def run_pipeline(pipeline_name, src="./media", dst="./results"):
             guidance_scale=7.5,
         )
         result = output.images[0]
-    
         final_strip = create_comparison_canvas(
             source, mask, result,
             text_label=prompt, alpha=0.35
@@ -76,6 +74,7 @@ def run_pipeline(pipeline_name, src="./media", dst="./results"):
         
         Path(dst).mkdir(parents=True, exist_ok=True)
         
+        result.convert('RGB').save(os.path.join(dst,"generations", file_name))
         final_strip.convert('RGB').save(f"{dst}/{file_name}")
 
 if __name__ == "__main__":
@@ -86,11 +85,16 @@ if __name__ == "__main__":
                         help="The pipeline to run")
     parser.add_argument("--src", type=str, default="./media", help="Source media directory")
     parser.add_argument("--dst", type=str, default="./results", help="Destination media directory")
+    parser.add_argument("--metric", action="store_true", help="Run metrics")
     args = parser.parse_args()
     
     load_dotenv()
     token = os.getenv('HF_TOKEN')
-    if token:
-        login()
     
-    run_pipeline(args.pipeline, args.src, args.dst)
+    if args.metric:
+        for source, mask, prompt, file_name in mask_pair_generator(args.src):
+            print(BackgroundPreservation.compare(source, mask, prompt, Image.open(os.path.join(args.dst, file_name))))
+    else:
+        if token:
+            login()
+        run_pipeline(args.pipeline, args.src, args.dst)
