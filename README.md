@@ -1,13 +1,19 @@
 # diffusion-inpainting
 
+
+LatentPaint, TD-paint, Blended Latent Diffusion,\
+post-conditioning, background reconstruction,\
+KID, MSE
+
 ## Papers
 The paper (Blended Latent Diffusion)[https://arxiv.org/pdf/2206.02779] introduces 2 techniques of interest. Background reconstruction and Progressive mask shrinking.
-In (LanPaint)[https://arxiv.org/pdf/2502.03491], a complex algorithm for inpainting is introduced.
-
+(LatentPaint)[https://openaccess.thecvf.com/content/WACV2024/papers/Corneanu_LatentPaint_Image_Inpainting_in_Latent_Space_With_Diffusion_Models_WACV_2024_paper.pdf] talks about conditioning. this is a method of making the model aware of the context that is the unmasked region throughout the diffusion process
+(TD-Paint)[https://arxiv.org/pdf/2410.09306] kind of like LatentPaint
 
 ## Improvements
 - background reconstruction
 - progressive mask shrinking
+- post conditioning
 
 ## Metrics
 - MSE on background
@@ -16,7 +22,6 @@ In (LanPaint)[https://arxiv.org/pdf/2502.03491], a complex algorithm for inpaint
     To measure how closely the model followed the prompt, we can use precision. This is basically an 
 - (KID)[https://arxiv.org/pdf/1801.01401], (docs)[https://lightning.ai/docs/torchmetrics/stable/image/kernel_inception_distance.html]
     Basically FID but works on smaller datasets
-
 
 ## How to run
 
