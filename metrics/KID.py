@@ -1,30 +1,35 @@
 import torch
 import numpy as np
 import torchvision.transforms as transforms
+from torchmetrics.image.kid import KernelInceptionDistance
 
 from PIL import Image
 import os
 
-def compare(original: Image.Image, mask: Image.Image, prompt: str, output: Image.Image):
-    transform = transforms.Compose([
-        transforms.ToTensor()
-    ])
+class KID:
+    def __init__(self):
+        self.kid = KernelInceptionDistance(subset_size=50, normalize=True)
+        self.transform = transforms.Compose([
+            transforms.ToTensor()
+        ])
 
-    src_tensor = transform(original)
-    mask_tensor = transform(mask)
-    output_tensor = transform(output)
+    def update(self, original: Image.Image, mask: Image.Image, prompt: str, output: Image.Image):
+        # TODO: crop
+        # TODO: to.device("cuda")
 
-    binary_mask = (mask_tensor > 0.5).float()
+        src_tensor = self.transform(original).unsqueeze(0)
+        mask_tensor = self.transform(mask).unsqueeze(0)
+        output_tensor = self.transform(output).unsqueeze(0)
+
+        binary_mask = (mask_tensor < 0.5).float()
+        
+        masked_src = src_tensor * binary_mask
+        masked_output = output_tensor * binary_mask
+        self.kid.update(masked_src, real=True)
+        self.kid.update(masked_output, real=False)
     
-    masked_src = src_tensor * binary_mask
-    masked_output = output_tensor * binary_mask
-
-    unmasked_pixels = binary_mask.sum()
-    squared_error = (masked_output - masked_src) ** 2
-    
-    MSE = squared_error.sum() / unmasked_pixels if unmasked_pixels != 0 else 0.0
-    print(MSE)
-    return MSE.item()
+    def compute(self):
+        return self.kid.compute()
 
 
 def read_file(file_path):
