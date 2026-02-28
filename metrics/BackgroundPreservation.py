@@ -2,29 +2,38 @@ import torch
 import numpy as np
 import torchvision.transforms as transforms
 
+from Metric import Metric
 from PIL import Image
 import os
 
-def compare(original: Image.Image, mask: Image.Image, prompt: str, output: Image.Image):
-    transform = transforms.Compose([
-        transforms.ToTensor()
-    ])
+class MSE(Metric):
+    def __init__(self, device="cuda"):
+        super().__init__(device=device)
 
-    src_tensor = transform(original)
-    mask_tensor = transform(mask)
-    output_tensor = transform(output)
+    def compute(self, 
+                original: Image.Image, 
+                mask: Image.Image, 
+                prompt: str, 
+                output: Image.Image):
+        src_tensor = self.transform(original.convert("RGB")).unsqueeze(0).to(self.device)
+        mask_tensor = self.transform(mask.convert("L")).unsqueeze(0).to(self.device)
+        output_tensor = self.transform(output.convert("RGB")).unsqueeze(0).to(self.device)
 
-    binary_mask = (mask_tensor > 0.5).float()
+        binary_mask = (mask_tensor > 0.5).float()
+        
+        masked_src = src_tensor * binary_mask
+        masked_output = output_tensor * binary_mask
+
+        unmasked_pixels = binary_mask.sum()
+        squared_error = (masked_output - masked_src) ** 2
+        
+        MSE = squared_error.sum() / unmasked_pixels if unmasked_pixels != 0 else 0.0
+        
+        return MSE.item()
     
-    masked_src = src_tensor * binary_mask
-    masked_output = output_tensor * binary_mask
-
-    unmasked_pixels = binary_mask.sum()
-    squared_error = (masked_output - masked_src) ** 2
-    
-    MSE = squared_error.sum() / unmasked_pixels if unmasked_pixels != 0 else 0.0
-    print(MSE)
-    return MSE.item()
+    # TODO: call dataset and shit
+    def run(self):
+        pass
 
 # ~~~~~~~~~~~~~~~~~~~~~ BELOW HERE IS CODE FOR TESTING ONLY ~~~~~~~~~~~~~~~~~~~~~
 
@@ -63,9 +72,10 @@ def mask_pair_generator(directory):
 
 def main():
     for source, mask, prompt, file_name in mask_pair_generator('./test/'):
-        compare(source, mask, prompt, Image.open(os.path.join('./test/result/generations', 'outside.jpg')))
-        compare(source, mask, prompt, Image.open(os.path.join('./test/result/generations', 'inside.jpg')))
-        compare(source, mask, prompt, Image.open(os.path.join('./test/result/generations', 'original.jpg')))
+        metric = MSE()
+        print(metric.compute(source, mask, prompt, Image.open(os.path.join('./test/result/generations', 'inside.jpg'))))
+        print(metric.compute(source, mask, prompt, Image.open(os.path.join('./test/result/generations', 'outside.jpg'))))
+        print(metric.compute(source, mask, prompt, Image.open(os.path.join('./test/result/generations', 'original.jpg'))))
 
 if __name__ == "__main__":
     main()

@@ -7,10 +7,13 @@ from dotenv import load_dotenv
 import torch
 from diffusers import DDPMScheduler
 from huggingface_hub import login
+import matplotlib.pyplot as plt
 
 from pipelines.VanillaPipeline import VanillaPipeline
+from pipelines.TDPaint import TDPaint
 from utils.image import get_square, create_comparison_canvas
-from metrics import BackgroundPreservation
+from utils.interactive import make_callback
+# from metrics.Metrics import metrics
 
 def read_file(file_path):
     try:
@@ -44,10 +47,10 @@ def mask_pair_generator(directory):
             
         yield src_obj, mask_obj, prompt, filename
 
-def run_pipeline(pipeline_name, src="./media", dst="./results"):
+def run_pipeline(pipeline_name, src="./media", dst="./results", interactive=False):
     model_id = "sd2-community/stable-diffusion-2-base"
 
-    pipelines = {"vanilla": VanillaPipeline}
+    pipelines = {"vanilla": VanillaPipeline, "TDPaint": TDPaint}
     
     pipeline = pipelines[pipeline_name]
     
@@ -55,6 +58,13 @@ def run_pipeline(pipeline_name, src="./media", dst="./results"):
     pipe = pipeline.from_pretrained(model_id, scheduler=scheduler, torch_dtype=torch.float32)
     pipe = pipe.to("cuda")
     pipe.vae.to(dtype=torch.float32)
+    if interactive:
+        plt.ion()
+        
+    kwargs = {
+        "callback": make_callback(pipe, display_every_n_steps=1),
+        "callback_steps": 1,
+    } if interactive else {}
 
     for source, mask, prompt, file_name in mask_pair_generator(src):
         print(f"Processing {file_name}...")
@@ -65,17 +75,20 @@ def run_pipeline(pipeline_name, src="./media", dst="./results"):
             image=source,
             mask=mask,
             guidance_scale=7.5,
+            **kwargs
         )
+        
         result = output.images[0]
         final_strip = create_comparison_canvas(
             source, mask, result,
             text_label=prompt, alpha=0.35
         )
+
+        Path(os.path.join(dst, pipeline_name)).mkdir(parents=True, exist_ok=True)
+        name, extension = os.path.splitext(file_name)
         
-        Path(dst).mkdir(parents=True, exist_ok=True)
-        
-        result.convert('RGB').save(os.path.join(dst,"generations", file_name))
-        final_strip.convert('RGB').save(f"{dst}/{file_name}")
+        result.convert('RGB').save(os.path.join(dst, pipeline_name, file_name))
+        final_strip.convert('RGB').save(os.path.join(dst, pipeline_name, f'{name}.compare{extension}'))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run pipeline on all samples")
@@ -85,16 +98,18 @@ if __name__ == "__main__":
                         help="The pipeline to run")
     parser.add_argument("--src", type=str, default="./media", help="Source media directory")
     parser.add_argument("--dst", type=str, default="./results", help="Destination media directory")
-    parser.add_argument("--metric", action="store_true", help="Run metrics")
+    parser.add_argument("--metric", type=str, help="Run metrics (KID|MSE)")
+    parser.add_argument("--interactive", action=argparse.BooleanOptionalAction, help="Use this flag to watch diffusion process (slows performance)")
     args = parser.parse_args()
     
     load_dotenv()
     token = os.getenv('HF_TOKEN')
     
     if args.metric:
+        # TODO: run metrics
         for source, mask, prompt, file_name in mask_pair_generator(args.src):
-            print(BackgroundPreservation.compare(source, mask, prompt, Image.open(os.path.join(args.dst, file_name))))
+            print(metrics[args.metric].compare(source, mask, prompt, Image.open(os.path.join(args.dst, file_name))))
     else:
         if token:
-            login()
-        run_pipeline(args.pipeline, args.src, args.dst)
+            login(token)
+        run_pipeline(args.pipeline, args.src, args.dst, args.interactive)

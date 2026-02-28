@@ -19,7 +19,7 @@ class VanillaPipeline(StableDiffusionPipeline):
         batch_size: int,
         num_images_per_prompt: int,
         device: torch.device,
-        dtype: torch.dtype,          # FIX 1: removed stray 'F' character (was: dtype: torch.dtype,F)
+        dtype: torch.dtype,
         vae_scale_factor: int = 8,
     ) -> torch.Tensor:
         """

@@ -16,28 +16,22 @@ def decode_latents(pipeline, latents):
     return Image.fromarray(image)
 
 def make_callback(pipeline, display_every_n_steps=1):
-    """
-    Returns a callback function to pass into pipeline.__call__.
-    
-    display_every_n_steps: decode and show image every N steps (decoding is slow,
-                           so you may want every 5 steps rather than every 1).
-    """
+    plt.ion() 
+    fig, ax = plt.subplots(figsize=(5, 5))
+
     def callback(step: int, timestep: int, latents: torch.FloatTensor):
         if step % display_every_n_steps != 0:
             return
         
         img = decode_latents(pipeline, latents)
         
-        # --- Jupyter ---
-        clear_output(wait=True)
-        display(img)
-        print(f"Step {step} | timestep {timestep}")
+        ax.clear()
+        ax.imshow(img)
+        ax.set_title(f"Step {step} | Timestep {timestep}")
+        ax.axis("off")
         
-        # --- Matplotlib (works outside Jupyter too) ---
-        axes.clear()
-        axes.imshow(img)
-        axes.set_title(f"Step {step} / timestep {timestep}")
-        axes.axis("off")
+        fig.canvas.draw()
+        fig.canvas.flush_events()
         plt.pause(0.01)
 
     return callback

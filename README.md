@@ -7,7 +7,7 @@ KID, MSE
 
 ## TODO
 - [] implement KID metric (with masked area cropped for better accuracy)
-- [] implement TD-paint pipeline (way more simple than LatentPaint)
+- [] implement TD-paint pipeline
 - [] implement background reconstruction pipeline
 - [] run metrics on dataset
 - [] write report
@@ -37,6 +37,9 @@ The paper (Blended Latent Diffusion)[https://arxiv.org/pdf/2206.02779] introduce
 - (KID)[https://arxiv.org/pdf/1801.01401], (docs)[https://lightning.ai/docs/torchmetrics/stable/image/kernel_inception_distance.html]
     Basically FID but works on smaller datasets
 
+## Experiments
+- Implemented a variation on TD-Paint. I didn't want to waste time and resources on training a model. I wanted a zero shot technique for inpainting. A promising idea was TD-Paint, basically I added very light noise to the background, hoping that it would help give context of the actual background to the inferred region. I got very poor results and now im dropping the idea of TD-Paint
+
 ## How to run
 
 For better performance with huggingface API, set in `.env` file `HF_TOKEN=<huggingface token>`
@@ -46,7 +49,7 @@ To run pipeline:
 
 | flag         | default value | type                | description           |
 |--------------|---------------|---------------------|-----------------------|
-| `--pipeline` | `vanilla`     | `vanilla\|preserve` | The pipeline to run   |
+| `--pipeline` | `vanilla`     | `vanilla\|TDPaint` | The pipeline to run   |
 | `--src`      | `./media`     | str                 | Source media dir      |
 | `--dst`      | `./results`   | str                 | Destination media dir |
 | `--metric`   | -             | boolean             | Use to run metrics    |
