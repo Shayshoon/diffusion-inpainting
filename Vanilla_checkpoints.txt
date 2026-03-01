@@ -1,0 +1,1 @@
+{'MSE': {'mean': np.float64(0.04247798168145847), 'std': np.float64(0.032315137164489)}, 'KID': (tensor(0.0114, device='cuda:0'), tensor(0.0043, device='cuda:0'))}

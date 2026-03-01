@@ -15,13 +15,13 @@ class Evaluator:
             metric.reset()
 
         for i, sample in tqdm(enumerate(dataset), desc=f"Evaluating {type(self.pipeline).__name__} pipeline:"):
-            output = self.pipeline.inpaint(sample['image'], sample['mask'], sample['prompt'])
+            output = self.pipeline.inpaint(sample['source'], sample['mask'], sample['prompt'])
             
             for metric in self.metrics:
-                metric.update(sample['image'], sample['mask'], sample['prompt'], output)
+                metric.update(sample['source'], sample['mask'], sample['prompt'], output)
 
-            if (i % 5 == 0):
+            if (i>50 and i % 5 == 0):
                 with open(f'{type(self.pipeline).__name__}_checkpoints.txt', 'w+') as file:
-                    file.write({ metric.get_name: metric.compute() for metric in self.metrics })
-
+                    file.write(str({ metric.get_name(): metric.compute() for metric in self.metrics }))
+                    
         return { metric.get_name: metric.compute() for metric in self.metrics }

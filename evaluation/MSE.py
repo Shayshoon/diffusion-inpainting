@@ -35,7 +35,8 @@ class MSE(Metric):
         unmasked_pixels = binary_mask.sum()
         squared_error = (masked_output - masked_src) ** 2
         
-        MSE = squared_error.sum() / unmasked_pixels if unmasked_pixels != 0 else 0.0
+        MSE = (squared_error.sum() / unmasked_pixels).cpu().item() if unmasked_pixels != 0 else 0.0
         
         self.samples = np.insert(self.samples, 0, MSE)
     
+

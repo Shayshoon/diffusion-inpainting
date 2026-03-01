@@ -104,12 +104,12 @@ if __name__ == "__main__":
     token = os.getenv('HF_TOKEN')
     
     if args.evaluate:
-        evaluation_pipelines: List[Vanilla] = [ Vanilla, BackgroundReconstruction,  BackgroundCopy ]
+        evaluation_pipelines: List[Vanilla] = [ BackgroundCopy, BackgroundReconstruction ]
         for pipeline in evaluation_pipelines:
             evaluator = Evaluator(pipeline(), [MSE.MSE(), KID.KID()])
             evaluation_results = evaluator.run(PipeDataset())
             with open("evaluation.txt", 'a+') as file:
-                file.write(evaluation_results)
+                file.write(str(evaluation_results))
                 file.write('\n')
     else:
         if token:

@@ -1,10 +1,9 @@
 from abc import ABC, abstractmethod
-
 from datasets import load_dataset
 
 class Dataset(ABC):
     @abstractmethod
-    def __init__(self, samples_count = 250):
+    def __init__(self, samples_count=250):
         pass
 
     @abstractmethod
@@ -16,12 +15,13 @@ class Dataset(ABC):
         pass
 
 class PipeDataset(Dataset):
-    def __init__(self, samples_count = 250):
-        self.images  = load_dataset('paint-by-inpaint/PIPE', split="test", streaming=True)
-        self.masks  = load_dataset('paint-by-inpaint/PIPE_Masks', split="test", streaming=True)
-        self.images = self.images.take(samples_count)
-        self.masks = self.masks.take(samples_count)
-    
+    def __init__(self, samples_count=250):
+        images = load_dataset('paint-by-inpaint/PIPE', split="test", streaming=True)
+        masks = load_dataset('paint-by-inpaint/PIPE_Masks', split="test", streaming=True)
+        
+        self.images = list(images.take(samples_count))
+        self.masks = list(masks.take(samples_count))
+
     def __len__(self):
         return len(self.images)
 
