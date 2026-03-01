@@ -15,22 +15,24 @@ class BackgroundReconstruction(Vanilla):
 
     def reset_vae(self):
         self.pipe.vae.decoder.load_state_dict(self.vae_backup)
-        self.pipe.vae.decoder.to(self.device, dtype=torch.float32)
-
+        self.pipe.vae.to(self.dtype)
+        
     def postprocess(self,
                     z_0: torch.Tensor,   # edited image latents [B, C, H, W]
                     x:   torch.Tensor,   # original image [B, C, H, W]
                     m:   torch.Tensor,   # mask [1, H, W]
+                    plot=False
                 ):
         device = self.device
         self.reset_vae()
+        self.pipe.vae.to(torch.float32)
         vae = self.pipe.vae
 
         # prepare for optimization
-        z_0 = z_0.detach().to(device=device, dtype=torch.float32)
-        m = m.detach().to(device=device, dtype=torch.float32).unsqueeze(0)
-        x = x.detach().to(device=device, dtype=torch.float32)
         x_hat = self.decode_latents(z_0).to(torch.float32)
+        z_0 = z_0.detach().to(device=device, dtype=torch.float32)
+        m = m.detach().to(device=device, dtype=torch.float32)
+        x = x.detach().to(device=device, dtype=torch.float32)
 
         # optimize only necessary parts to save time
         params_to_optimize = list(vae.decoder.conv_out.parameters()) + \
@@ -44,13 +46,12 @@ class BackgroundReconstruction(Vanilla):
         # # optimize decoder
         # self.vae.decoder.requires_grad_(True)
         vae.decoder.train()
-        vae.decoder.to(device=device, dtype=torch.float32)
 
         # init optimizer as stated in the paper
         scaling_factor = vae.config.scaling_factor
         known_region_weight = 100.0
         learning_rate = 0.0001
-        num_steps = 20
+        num_steps = 50
 
         optimizer = torch.optim.Adam(
             params_to_optimize, 
@@ -59,7 +60,6 @@ class BackgroundReconstruction(Vanilla):
 
         # dict to track training progress
         history = {"total": [], "masked": [], "unmasked": []}
-        plot = False
 
         with torch.enable_grad():
             for i in tqdm(range(num_steps), desc="Optimizing weights:"):
@@ -97,4 +97,4 @@ class BackgroundReconstruction(Vanilla):
         # toggle evaluation mode back on
         vae.decoder.eval()
         vae.decoder.requires_grad_(False)
-        vae.decoder.to(dtype=self.dtype)
+        self.pipe.vae.to(self.dtype)

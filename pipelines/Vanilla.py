@@ -12,9 +12,12 @@ class Vanilla:
     def __init__(self, model_id="sd2-community/stable-diffusion-2-base", dtype=torch.float16, device="cuda"):
         self.dtype = dtype
         self.device = device
-        self.pipe: DiffusionPipeline = DiffusionPipeline.from_pretrained(model_id, torch_dtype=dtype, device_map="cuda")
-        self.pipe.scheduler = DDIMScheduler.from_config(self.pipe.scheduler.config)
+        self.pipe: DiffusionPipeline = DiffusionPipeline.from_pretrained(
+                model_id, 
+                torch_dtype=dtype, 
+                device_map=device)
         self.pipe.unet = self.pipe.unet.to(torch.float32)
+        self.pipe.scheduler = DDIMScheduler.from_config(self.pipe.scheduler.config)
         self.known_noise_multiplier = 0.0
     
     @staticmethod
@@ -29,10 +32,7 @@ class Vanilla:
         return ps_image, ps_mask
     
     def decode_latents(self, latents: torch.Tensor):
-        print(f"latents stats - min: {latents.min()}, max: {latents.max()}, has_nan: {torch.isnan(latents).any()}, has_inf: {torch.isinf(latents).any()}")
-        print("scaling factor: ", self.pipe.vae.config.scaling_factor)
-        output = self.pipe.vae.decode(latents / self.pipe.vae.config.scaling_factor).sample.clamp(-1, 1)
-        print(f"output stats - min: {output.min()}, max: {output.max()}, has_nan: {torch.isnan(output).any()}, has_inf: {torch.isinf(output).any()}")
+        output = self.pipe.vae.decode(latents.to(self.pipe.vae.dtype) / self.pipe.vae.config.scaling_factor).sample.clamp(-1, 1)
         return output
 
     # defined empty function we can inherit, this will simplify implementation of other pipelines
@@ -51,7 +51,7 @@ class Vanilla:
                 mask:               Union[Image.Image, np.ndarray, torch.Tensor], 
                 prompt:             str, 
                 num_inference_steps = 50,
-                guidance_scale      = 7.5,
+                guidance_scale      = 10.0,
                 callback:           Optional[Callable[[int, int, torch.FloatTensor], None]] = None,
                 callback_steps:     int = 10) -> Image.Image:
         device = self.device
@@ -63,7 +63,6 @@ class Vanilla:
         # encode image
         ls_image = self.pipe.vae.encode(ps_image).latent_dist.mode()
         ls_image = self.pipe.vae.config.scaling_factor * ls_image
-        ls_image = ls_image
 
         # encode mask
         ls_mask = torch.nn.functional.interpolate(
@@ -71,14 +70,9 @@ class Vanilla:
             size=ls_image.shape[2:], 
             mode="nearest"
             ).clamp(0, 1)
-
-        # generate noise for known region
-        noise = torch.randn_like(ls_image).to(device=device, dtype=dtype)
         
         # initialize result as noise in latent space
-        print(self.pipe.scheduler.init_noise_sigma)  
         ls_result = torch.randn_like(ls_image) * self.pipe.scheduler.init_noise_sigma
-        print(ls_result.abs().max())
 
         self.pipe.scheduler.set_timesteps(num_inference_steps)
 
@@ -87,6 +81,9 @@ class Vanilla:
         prompt_embeddings = torch.cat([negative_embeddings, positive_embeddings]).to(dtype)
     
         for i, t in enumerate(tqdm(self.pipe.scheduler.timesteps, desc="Inpainting")):
+            # generate noise for known region
+            noise = torch.randn_like(ls_image)
+        
             scaled_t = int(t * self.known_noise_multiplier) if self.known_noise_multiplier != 0.0 else t
             t_tensor = torch.tensor([scaled_t], device=device)
             ls_image_noised = self.pipe.scheduler.add_noise(ls_image, noise, t_tensor)
@@ -94,10 +91,8 @@ class Vanilla:
             # 1 -> keep original, 0 -> inpaint
             ls_result = ((1 - ls_mask) * ls_result) + (ls_mask * ls_image_noised)
 
-            # print(ls_input.abs().max())  # before scale_model_input
             ls_input = torch.cat([ls_result] * 2)
-            # ls_input = self.pipe.scheduler.scale_model_input(ls_input, t)
-            print(ls_input.abs().max())
+            ls_input = self.pipe.scheduler.scale_model_input(ls_input, t)
 
             # predict noise
             # this is a problematic operation that is likely to produce NaN values if not handled correctly
@@ -119,11 +114,9 @@ class Vanilla:
             if callback is not None and i % callback_steps == 0:
                 callback(i, t, self.decode_latents(ls_result))
         
-        print(f"ls_result before blend - min: {ls_result.min()}, max: {ls_result.max()}")
         ls_result = (1 - ls_mask) * ls_result + ls_mask * ls_image
-        print(f"ls_result after blend - min: {ls_result.min()}, max: {ls_result.max()}")
 
-        self.postprocess(ls_result, ps_image, ps_mask) # handle ls_result being float16 and ps_image 32?
+        self.postprocess(ls_result, ps_image, ps_mask)
         output = self.decode_latents(ls_result)
         output = self.postprocess_output(output, ps_mask, ps_image)
 

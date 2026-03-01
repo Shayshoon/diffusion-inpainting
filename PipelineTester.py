@@ -73,7 +73,7 @@ def run_pipeline(
 
     for source, mask, prompt, file_name in mask_pair_generator(src):
         print(f"Processing {file_name}...")
-        result = pipeline.inpaint(source, mask, prompt, num_inference_steps=50, **kwargs)
+        result = pipeline.inpaint(source, mask, prompt, num_inference_steps=100, **kwargs)
         
         final_strip = create_comparison_canvas(
             source, mask, result,
