@@ -1,19 +1,29 @@
 import os
 import argparse
 from pathlib import Path
+from typing import List
 from PIL import Image
 from dotenv import load_dotenv
 
 import torch
-from diffusers import DDPMScheduler
 from huggingface_hub import login
-import matplotlib.pyplot as plt
 
-from pipelines.VanillaPipeline import VanillaPipeline
+from evaluation import KID, MSE
+from evaluation.Dataset import PipeDataset
+from pipelines.Vanilla import Vanilla
+from pipelines.BackgroundReconstruction import BackgroundReconstruction
 from pipelines.TDPaint import TDPaint
+from pipelines.BackgroundCopy import BackgroundCopy
 from utils.image import get_square, create_comparison_canvas
-from utils.interactive import make_callback
-# from metrics.Metrics import metrics
+from utils.interactive import init_callback
+from evaluation.Evaluator import Evaluator
+
+pipelines: dict[str, Vanilla] = {
+    "vanilla": Vanilla,
+    "BackgroundReconstruction": BackgroundReconstruction, 
+    "BackgroundCopy": BackgroundCopy,
+    "TDPaint": TDPaint, 
+    }
 
 def read_file(file_path):
     try:
@@ -47,38 +57,24 @@ def mask_pair_generator(directory):
             
         yield src_obj, mask_obj, prompt, filename
 
-def run_pipeline(pipeline_name, src="./media", dst="./results", interactive=False):
-    model_id = "sd2-community/stable-diffusion-2-base"
+def run_pipeline(
+        pipeline_name="vanilla", 
+        src="./media", 
+        dst="./results", 
+        interactive=False, 
+        model_id = "sd2-community/stable-diffusion-2-base"):
+    
+    pipeline = pipelines[pipeline_name](model_id, dtype=torch.float16)
 
-    pipelines = {"vanilla": VanillaPipeline, "TDPaint": TDPaint}
-    
-    pipeline = pipelines[pipeline_name]
-    
-    scheduler = DDPMScheduler.from_pretrained(model_id, subfolder="scheduler")
-    pipe = pipeline.from_pretrained(model_id, scheduler=scheduler, torch_dtype=torch.float32)
-    pipe = pipe.to("cuda")
-    pipe.vae.to(dtype=torch.float32)
-    if interactive:
-        plt.ion()
-        
     kwargs = {
-        "callback": make_callback(pipe, display_every_n_steps=1),
+        "callback": init_callback(pipeline),
         "callback_steps": 1,
     } if interactive else {}
 
     for source, mask, prompt, file_name in mask_pair_generator(src):
         print(f"Processing {file_name}...")
+        result = pipeline.inpaint(source, mask, prompt, num_inference_steps=50, **kwargs)
         
-        output = pipe(
-            prompt=prompt,
-            num_inference_steps=50,
-            image=source,
-            mask=mask,
-            guidance_scale=7.5,
-            **kwargs
-        )
-        
-        result = output.images[0]
         final_strip = create_comparison_canvas(
             source, mask, result,
             text_label=prompt, alpha=0.35
@@ -98,18 +94,27 @@ if __name__ == "__main__":
                         help="The pipeline to run")
     parser.add_argument("--src", type=str, default="./media", help="Source media directory")
     parser.add_argument("--dst", type=str, default="./results", help="Destination media directory")
-    parser.add_argument("--metric", type=str, help="Run metrics (KID|MSE)")
-    parser.add_argument("--interactive", action=argparse.BooleanOptionalAction, help="Use this flag to watch diffusion process (slows performance)")
+    parser.add_argument("--evaluate", action="store_true", help="Run metrics")
+    parser.add_argument("--interactive", 
+                        action=argparse.BooleanOptionalAction, 
+                        help="Use this flag to watch diffusion process (slows performance)")
     args = parser.parse_args()
     
     load_dotenv()
     token = os.getenv('HF_TOKEN')
     
-    if args.metric:
-        # TODO: run metrics
-        for source, mask, prompt, file_name in mask_pair_generator(args.src):
-            print(metrics[args.metric].compare(source, mask, prompt, Image.open(os.path.join(args.dst, file_name))))
+    if args.evaluate:
+        evaluation_pipelines: List[Vanilla] = [ Vanilla, BackgroundReconstruction,  BackgroundCopy ]
+        for pipeline in evaluation_pipelines:
+            evaluator = Evaluator(pipeline(), [MSE.MSE(), KID.KID()])
+            evaluation_results = evaluator.run(PipeDataset())
+            with open("evaluation.txt", 'a+') as file:
+                file.write(evaluation_results)
+                file.write('\n')
     else:
         if token:
             login(token)
-        run_pipeline(args.pipeline, args.src, args.dst, args.interactive)
+        run_pipeline(pipeline_name=args.pipeline, 
+                     src=args.src, 
+                     dst=args.dst, 
+                     interactive=args.interactive)
