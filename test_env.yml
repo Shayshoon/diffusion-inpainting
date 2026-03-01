@@ -1,0 +1,22 @@
+name: test_proj
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pytorch>=2.4.0
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=12.1
+  - matplotlib
+  - jupyter
+  - python-dotenv
+  - numpy
+  - pillow
+  - pip
+  - pip:
+    - diffusers
+    - transformers
+    - accelerate
+    - safetensors

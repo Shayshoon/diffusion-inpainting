@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-from diffusers import DiffusionPipeline, DDIMScheduler
+from diffusers import DiffusionPipeline, DDIMScheduler, AutoencoderKL
 
 from typing import Callable, Optional, Union, Tuple
 
@@ -14,7 +14,6 @@ class Vanilla:
         self.device = device
         self.pipe: DiffusionPipeline = DiffusionPipeline.from_pretrained(model_id, torch_dtype=dtype, device_map="cuda")
         self.pipe.scheduler = DDIMScheduler.from_config(self.pipe.scheduler.config)
-        # self.pipe.vae = self.pipe.vae.to(torch.float32)
         self.pipe.unet = self.pipe.unet.to(torch.float32)
         self.known_noise_multiplier = 0.0
     
@@ -64,7 +63,7 @@ class Vanilla:
         # encode image
         ls_image = self.pipe.vae.encode(ps_image).latent_dist.mode()
         ls_image = self.pipe.vae.config.scaling_factor * ls_image
-        ls_image = ls_image.to(dtype)
+        ls_image = ls_image
 
         # encode mask
         ls_mask = torch.nn.functional.interpolate(
