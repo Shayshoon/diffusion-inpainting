@@ -6,7 +6,7 @@ from tqdm import tqdm
 from PIL import Image
 
 from .Metric import Metric
-from utils.directory_iterator import mask_pair_generator
+from .utils.directory_iterator import mask_pair_generator
 import CLIP
 import KID
 import LPIPS

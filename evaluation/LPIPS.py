@@ -5,7 +5,7 @@ from collections import defaultdict
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 from .Metric import Metric
-from utils.regions import extract_regions
+from .utils.regions import extract_regions
 
 class LPIPS(Metric):
     """

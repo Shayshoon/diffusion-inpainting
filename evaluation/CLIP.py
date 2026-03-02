@@ -5,7 +5,7 @@ from collections import defaultdict
 from torchmetrics.multimodal.clip_score import CLIPScore
 
 from .Metric import Metric
-from utils.regions import extract_regions
+from .utils.regions import extract_regions
 
 class SSIM(Metric):
     def __init__(self, device="cuda"):
