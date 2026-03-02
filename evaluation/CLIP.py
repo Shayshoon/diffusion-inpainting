@@ -5,6 +5,7 @@ from collections import defaultdict
 from torchmetrics.multimodal.clip_score import CLIPScore
 
 from .Metric import Metric
+from utils.regions import extract_regions
 
 class SSIM(Metric):
     def __init__(self, device="cuda"):
@@ -32,7 +33,7 @@ class SSIM(Metric):
         output_tensor = output.convert("RGB")
 
         binary_mask = (mask_tensor > 0.5).float()
-        regions = self._extract_regions(None, output_tensor, binary_mask)
+        regions = extract_regions(None, output_tensor, binary_mask)
 
         for region_name, (src_region, out_region, mask_region) in regions.items():
             if mask_region is not None:

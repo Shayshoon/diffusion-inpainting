@@ -4,6 +4,7 @@ from PIL import Image
 from collections import defaultdict
 
 from .Metric import Metric
+from utils.regions import extract_regions
 
 class PSNR(Metric):
     """
@@ -41,7 +42,7 @@ class PSNR(Metric):
         output_t = self.transform(output.convert("RGB")).unsqueeze(0).to(self.device)
 
         binary_mask = (mask_t > 0.5).float()
-        regions = self._extract_regions(src_t, output_t, binary_mask)
+        regions = extract_regions(src_t, output_t, binary_mask)
 
         for region_name, (src_r, out_r, w) in regions.items():
             se = (out_r - src_r) ** 2

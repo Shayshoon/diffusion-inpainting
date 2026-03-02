@@ -2,10 +2,10 @@ import torch
 import numpy as np
 from PIL import Image
 from collections import defaultdict
-
 from torchmetrics.image.kid import KernelInceptionDistance
 
 from .Metric import Metric
+from utils.regions import extract_regions
 
 class KID(Metric):
     def __init__(self, device="cuda", subset_size=50):
@@ -45,12 +45,12 @@ class KID(Metric):
         output_tensor = self.transform(output.convert("RGB")).unsqueeze(0).to(self.device)
 
         binary_mask = (mask_tensor > 0.5).float()
-        regions = self._extract_regions(src_tensor, output_tensor, binary_mask)
+        regions = extract_regions(src_tensor, output_tensor, binary_mask)
 
         for region_name, (src_region, out_region, mask) in regions.items():
             if mask is not None:
                 src_region = src_region * mask.expand_as(src_region)
                 out_region = out_region * mask.expand_as(out_region)
-            # KID expects (N, C, H, W) with 3 channels
+            
             self.kids[region_name].update(src_region, real=True)
             self.kids[region_name].update(out_region, real=False)

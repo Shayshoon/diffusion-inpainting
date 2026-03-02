@@ -7,6 +7,12 @@ from PIL import Image
 
 from .Metric import Metric
 from utils.directory_iterator import mask_pair_generator
+import CLIP
+import KID
+import LPIPS
+import MSE
+import PSNR
+import SSIM
 
 class Evaluator:
     def __init__(self, metrics: List[Metric]):
@@ -20,7 +26,6 @@ class Evaluator:
             mask_pair_generator(src),
             desc=f"Evaluating {type(self.pipeline).__name__} pipeline:",
         ):
-            sample_name, extension = os.path.splitext(filename)
             output_path = os.path.join(dst, filename)
             
             for metric in self.metrics:

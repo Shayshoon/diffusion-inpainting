@@ -5,7 +5,7 @@ from collections import defaultdict
 from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 from .Metric import Metric
-
+from utils.regions import extract_regions
 
 class LPIPS(Metric):
     """
@@ -52,7 +52,7 @@ class LPIPS(Metric):
         output_t = self._to_lpips(output.convert("RGB"))
 
         binary_mask = (mask_t > 0.5).float()
-        regions = self._extract_regions(src_t, output_t, binary_mask)
+        regions = extract_regions(src_t, output_t, binary_mask)
 
         for region_name, (src_r, out_r, w) in regions.items():
             if w is not None:

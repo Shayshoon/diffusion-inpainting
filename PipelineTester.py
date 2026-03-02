@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List
 from PIL import Image
 from dotenv import load_dotenv
+import datetime
 
 import torch
 from huggingface_hub import login
@@ -15,7 +16,7 @@ from pipelines.TDPaint import TDPaint
 from pipelines.BackgroundCopy import BackgroundCopy
 from utils.image import get_square, create_comparison_canvas
 from utils.interactive import init_callback
-from evaluation.Evaluator import Evaluator
+from evaluation.Evaluator import Evaluator, PSNR, KID, SSIM, MSE, LPIPS, CLIP
 from evaluations.utils.directory_iterator import mask_pair_generator
 
 pipelines: dict[str, Vanilla] = {
@@ -85,7 +86,7 @@ if __name__ == "__main__":
                         help="The pipeline to run")
     parser.add_argument("--src", type=str, default="./media", help="Source media directory")
     parser.add_argument("--dst", type=str, default="./results", help="Destination media directory")
-    parser.add_argument("--evaluate", action="store_true", help="Run metrics")
+    parser.add_argument("--evaluate", action="store_true", help="Run evaluation metrics")
     parser.add_argument("--interactive", 
                         action=argparse.BooleanOptionalAction, 
                         help="Use this flag to watch diffusion process (slows performance)")
@@ -95,15 +96,7 @@ if __name__ == "__main__":
     load_dotenv()
     token = os.getenv('HF_TOKEN')
     
-    if args.evaluate:
-        evaluation_pipelines: List[Vanilla] = [ BackgroundCopy, BackgroundReconstruction ]
-        for pipeline in evaluation_pipelines:
-            evaluator = Evaluator(pipeline(), [MSE.MSE(), KID.KID()])
-            evaluation_results = evaluator.run()
-            with open("evaluation.txt", 'a+') as file:
-                file.write(str(evaluation_results))
-                file.write('\n')
-    else:
+    if not args.evaluate:
         if token:
             login(token)
         run_pipeline(pipeline_name=args.pipeline, 
@@ -111,3 +104,22 @@ if __name__ == "__main__":
                      dst=args.dst, 
                      interactive=args.interactive,
                      skip_existing=args.skip_existing)
+    else:
+        evaluator = Evaluator([ MSE.MSE(),
+                                PSNR.PSNR(),  
+                                SSIM.SSIM(), 
+                                KID.KID(), 
+                                CLIP.CLIP(),
+                                LPIPS.LPIPS(), 
+                            ])
+        
+        for pipeline_name in list(pipelines.keys()):
+            source_dir = args.src or 'samples'
+            dest_dir = args.dst or 'pipe_results'
+            dest_dir = os.path.join(dest_dir, pipeline_name)
+
+            evaluation_results = evaluator.run(source_dir, dest_dir)
+            
+            result_path = os.path.join(dest_dir, 'evaluation.txt')
+            with open(result_path, 'a+') as file:
+                file.write(f'Evaluation results for [{str(datetime.datetime.now())}]:\n{str(evaluation_results)}\n')

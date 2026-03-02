@@ -3,3 +3,6 @@ download_dataset.py
 invert.py
 pipelines/utils/conversions.py
 utils/image.py
+evaluation/MSE.py
+evaluation/PSNR.py
+evaluation/LPIPS.py
