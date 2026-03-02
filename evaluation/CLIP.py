@@ -12,16 +12,7 @@ class CLIP(Metric):
         super().__init__(device=device)
         self.clip = CLIPScore(model_name_or_path="openai/clip-vit-base-patch16").to(device)
         self.samples: dict[str, list] = defaultdict(list)
-
-    def get_name(self):
-        return "CLIP"
-
-    def reset(self):
-        self.samples = defaultdict(list)
-
-    def compute(self):
-        return {region: self._compute_stats(self.samples[region])
-                for region in self.REGIONS}
+        self.name = "CLIP"
 
     @torch.no_grad()
     def update(self,

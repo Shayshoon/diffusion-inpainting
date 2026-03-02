@@ -10,16 +10,7 @@ class MSE(Metric):
     def __init__(self, device="cuda"):
         super().__init__(device=device)
         self.samples: dict[str, list] = defaultdict(list)
-
-    def get_name(self):
-        return "MSE"
-
-    def reset(self):
-        self.samples = defaultdict(list)
-
-    def compute(self):
-        return {region: self._compute_stats(self.samples[region])
-                for region in self.REGIONS}
+        self.name = "MSE"
 
     def update(self,
                original: Image.Image,

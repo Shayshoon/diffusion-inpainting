@@ -6,3 +6,4 @@ utils/image.py
 evaluation/MSE.py
 evaluation/PSNR.py
 evaluation/LPIPS.py
+evaluation/GDiff.py

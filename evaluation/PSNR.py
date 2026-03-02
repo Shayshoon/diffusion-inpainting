@@ -20,16 +20,7 @@ class PSNR(Metric):
         super().__init__(device=device)
         self.max_val = max_val
         self.samples: dict[str, list] = defaultdict(list)
-
-    def get_name(self):
-        return "PSNR"
-
-    def reset(self):
-        self.samples = defaultdict(list)
-
-    def compute(self):
-        return {region: self._compute_stats(self.samples[region])
-                for region in self.REGIONS}
+        self.name = "PSNR"
 
     @torch.no_grad()
     def update(self,
@@ -69,7 +60,7 @@ class PSNR(Metric):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _compute_stats(samples: list) -> dict:
+    def get_stats(samples: list) -> dict:
         if not samples:
             return {}
         finite = [s for s in samples if np.isfinite(s)]

@@ -4,7 +4,9 @@ from pathlib import Path
 from typing import List
 from PIL import Image
 from dotenv import load_dotenv
+import pandas as pd
 import datetime
+import csv
 
 import torch
 from huggingface_hub import login
@@ -16,7 +18,7 @@ from pipelines.TDPaint import TDPaint
 from pipelines.BackgroundCopy import BackgroundCopy
 from utils.image import get_square, create_comparison_canvas
 from utils.interactive import init_callback
-from evaluation.Evaluator import Evaluator, PSNR, KID, SSIM, MSE, LPIPS, CLIP
+from evaluation.Evaluator import Evaluator, PSNR, KID, SSIM, MSE, LPIPS, CLIP, GDiff
 from evaluation.utils.directory_iterator import mask_pair_generator
 
 pipelines: dict[str, Vanilla] = {
@@ -98,18 +100,21 @@ if __name__ == "__main__":
         evaluator = Evaluator([ MSE(),
                                 PSNR(),  
                                 SSIM(), 
+                                GDiff()
                                 KID(), 
-                #                CLIP(),
+                                # CLIP(),
                                 LPIPS(), 
                             ])
         
-        for pipeline_name in list(pipelines.keys()):
-            source_dir = args.src or 'samples'
-            dest_dir = args.dst or 'pipe_results'
-            dest_dir = os.path.join(dest_dir, pipeline_name)
+        dst = args.dst or 'pipe_results'
+        source_dir = args.src or 'samples'
+        dst_dir = os.path.join(dst, pipeline_name)
+        csv_path = os.path.join(dst, 'evaluation_results.csv')
 
-            evaluation_results = evaluator.run(source_dir, dest_dir)
-            
-            result_path = os.path.join(dest_dir, 'evaluation.txt')
-            with open(result_path, 'a+') as file:
-                file.write(f'Evaluation results for [{str(datetime.datetime.now())}]:\n{str(evaluation_results)}\n')
+        evaluation_results = evaluator.run(source_dir, dst_dir, pipeline_name)
+        all_results = pd.concat([
+            evaluator.run(source_dir, os.path.join(dst, pipeline_name), pipeline_name)
+            for pipeline_name in pipelines.keys()
+        ])
+
+        all_results.to_csv(csv_path)

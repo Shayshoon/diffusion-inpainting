@@ -20,8 +20,8 @@ class Vanilla:
         self.pipe.scheduler = DDIMScheduler.from_config(self.pipe.scheduler.config)
         self.known_noise_multiplier = 0.0
     
-    @staticmethod
     def preprocess_image_and_mask(
+        self,
         image: Union[Image.Image, np.ndarray, torch.Tensor],
         mask: Union[Image.Image, np.ndarray, torch.Tensor],
         device: str = "cuda",
@@ -58,7 +58,7 @@ class Vanilla:
         dtype = self.dtype
 
         # pixel-space image and mask
-        ps_image, ps_mask = Vanilla.preprocess_image_and_mask(image, mask, device, dtype)
+        ps_image, ps_mask = self.preprocess_image_and_mask(image, mask, device, dtype)
     
         # encode image
         ls_image = self.pipe.vae.encode(ps_image).latent_dist.mode()

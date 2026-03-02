@@ -12,16 +12,7 @@ class SSIM(Metric):
         super().__init__(device=device)
         self.ssim = StructuralSimilarityIndexMeasure().to(device)
         self.samples: dict[str, list] = defaultdict(list)
-
-    def get_name(self):
-        return "SSIM"
-
-    def reset(self):
-        self.samples = defaultdict(list)
-
-    def compute(self):
-        return {region: self._compute_stats(self.samples[region])
-                for region in self.REGIONS}
+        self.name = "SSIM"
 
     @torch.no_grad()
     def update(self,

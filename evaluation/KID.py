@@ -17,9 +17,7 @@ class KID(Metric):
             ).to(self.device)
             for region in self.REGIONS
         }
-
-    def get_name(self):
-        return "KID"
+        self.name = "KID"
 
     def reset(self):
         for kid in self.kids.values():
@@ -29,10 +27,8 @@ class KID(Metric):
         results = {}
         for region, kid in self.kids.items():
             mean, std = kid.compute()
-            results[region] = {
-                "mean": mean.cpu().item(),
-                "std":  std.cpu().item(),
-            }
+            results[f"{self.get_name()}/{region}/mean"] = mean.cpu().item()
+            results[f"{self.get_name()}/{region}/std"]  = std.cpu().item()
         return results
 
     def update(self,

@@ -29,16 +29,7 @@ class LPIPS(Metric):
         ).to(device)
         self.loss_fn.eval()
         self.samples: dict[str, list] = defaultdict(list)
-
-    def get_name(self):
-        return f"LPIPS_{self.net}"
-
-    def reset(self):
-        self.samples = defaultdict(list)
-
-    def compute(self):
-        return {region: self._compute_stats(self.samples[region])
-                for region in self.REGIONS}
+        self.name = f"LPIPS_{self.net}"
 
     @torch.no_grad()
     def update(self,
