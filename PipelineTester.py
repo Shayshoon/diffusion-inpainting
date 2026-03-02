@@ -14,7 +14,7 @@ from huggingface_hub import login
 from evaluation import KID, MSE
 from pipelines.Vanilla import Vanilla
 from pipelines.BackgroundReconstruction import BackgroundReconstruction
-from pipelines.TDPaint import TDPaint
+from pipelines.SimpleTDPaint import SimpleTDPaint
 from pipelines.BackgroundCopy import BackgroundCopy
 from utils.image import get_square, create_comparison_canvas
 from utils.interactive import init_callback
@@ -25,7 +25,7 @@ pipelines: dict[str, Vanilla] = {
     "vanilla": Vanilla,
     "BackgroundReconstruction": BackgroundReconstruction, 
     "BackgroundCopy": BackgroundCopy,
-    "TDPaint": TDPaint, 
+    "SimpleTDPaint": SimpleTDPaint, 
     }
 
 def run_pipeline(
