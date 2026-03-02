@@ -9,7 +9,6 @@ import torch
 from huggingface_hub import login
 
 from evaluation import KID, MSE
-from evaluation.Dataset import PipeDataset
 from pipelines.Vanilla import Vanilla
 from pipelines.BackgroundReconstruction import BackgroundReconstruction
 from pipelines.TDPaint import TDPaint
@@ -100,7 +99,7 @@ if __name__ == "__main__":
         evaluation_pipelines: List[Vanilla] = [ BackgroundCopy, BackgroundReconstruction ]
         for pipeline in evaluation_pipelines:
             evaluator = Evaluator(pipeline(), [MSE.MSE(), KID.KID()])
-            evaluation_results = evaluator.run(PipeDataset())
+            evaluation_results = evaluator.run()
             with open("evaluation.txt", 'a+') as file:
                 file.write(str(evaluation_results))
                 file.write('\n')
