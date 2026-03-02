@@ -4,7 +4,7 @@ from PIL import Image
 from collections import defaultdict
 
 from .Metric import Metric
-from utils.regions import extract_regions
+from .utils.regions import extract_regions
 
 class MSE(Metric):
     def __init__(self, device="cuda"):

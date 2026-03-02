@@ -29,9 +29,9 @@ class SSIM(Metric):
                mask: Image.Image,
                prompt: str,
                output: Image.Image):
-        src_tensor    = original.convert("RGB")
-        mask_tensor   = mask.convert("L").unsqueeze(0).to(self.device)
-        output_tensor = output.convert("RGB")
+        src_tensor    = self.transform(original.convert("RGB")).unsqueeze(0).to(self.device)
+        mask_tensor   = self.transform(mask.convert("L")).unsqueeze(0).to(self.device)
+        output_tensor = self.transform(output.convert("RGB")).unsqueeze(0).to(self.device)
 
         binary_mask = (mask_tensor > 0.5).float()
         regions = extract_regions(src_tensor, output_tensor, binary_mask)

@@ -17,7 +17,7 @@ from pipelines.BackgroundCopy import BackgroundCopy
 from utils.image import get_square, create_comparison_canvas
 from utils.interactive import init_callback
 from evaluation.Evaluator import Evaluator, PSNR, KID, SSIM, MSE, LPIPS, CLIP
-from evaluations.utils.directory_iterator import mask_pair_generator
+from evaluation.utils.directory_iterator import mask_pair_generator
 
 pipelines: dict[str, Vanilla] = {
     "vanilla": Vanilla,
@@ -26,16 +26,6 @@ pipelines: dict[str, Vanilla] = {
     "TDPaint": TDPaint, 
     }
 
-def read_file(file_path):
-    try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            content = file.read()
-            return content
-    except FileNotFoundError:
-        return "Error: The file was not found."
-    except Exception as e:
-        return f"An unexpected error occurred: {e}"
-        
 def run_pipeline(
         pipeline_name="vanilla", 
         src="./media", 
@@ -105,12 +95,12 @@ if __name__ == "__main__":
                      interactive=args.interactive,
                      skip_existing=args.skip_existing)
     else:
-        evaluator = Evaluator([ MSE.MSE(),
-                                PSNR.PSNR(),  
-                                SSIM.SSIM(), 
-                                KID.KID(), 
-                                CLIP.CLIP(),
-                                LPIPS.LPIPS(), 
+        evaluator = Evaluator([ MSE(),
+                                PSNR(),  
+                                SSIM(), 
+                                KID(), 
+                #                CLIP(),
+                                LPIPS(), 
                             ])
         
         for pipeline_name in list(pipelines.keys()):

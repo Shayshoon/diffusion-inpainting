@@ -1,6 +1,17 @@
 import os
 from PIL import Image
 
+def read_file(file_path):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            content = file.read()
+            return content
+    except FileNotFoundError:
+        return "Error: The file was not found."
+    except Exception as e:
+        return f"An unexpected error occurred: {e}"
+        
+
 def mask_pair_generator(directory):
     """
     Yields (source_pil, mask_pil, prompt, filename) for every sample.

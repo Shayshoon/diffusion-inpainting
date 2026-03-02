@@ -7,12 +7,12 @@ from PIL import Image
 
 from .Metric import Metric
 from .utils.directory_iterator import mask_pair_generator
-import CLIP
-import KID
-import LPIPS
-import MSE
-import PSNR
-import SSIM
+from .CLIP import CLIP
+from .KID import KID
+from .LPIPS import LPIPS
+from .MSE import MSE
+from .PSNR import PSNR
+from .SSIM import SSIM
 
 class Evaluator:
     def __init__(self, metrics: List[Metric]):
@@ -24,7 +24,7 @@ class Evaluator:
 
         for target, mask, prompt, filename in tqdm(
             mask_pair_generator(src),
-            desc=f"Evaluating {type(self.pipeline).__name__} pipeline:",
+            desc=f"Evaluating {dst}:",
         ):
             output_path = os.path.join(dst, filename)
             

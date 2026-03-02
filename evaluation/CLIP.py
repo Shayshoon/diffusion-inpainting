@@ -7,7 +7,7 @@ from torchmetrics.multimodal.clip_score import CLIPScore
 from .Metric import Metric
 from .utils.regions import extract_regions
 
-class SSIM(Metric):
+class CLIP(Metric):
     def __init__(self, device="cuda"):
         super().__init__(device=device)
         self.clip = CLIPScore(model_name_or_path="openai/clip-vit-base-patch16").to(device)

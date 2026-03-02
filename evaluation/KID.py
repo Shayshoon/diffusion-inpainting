@@ -5,7 +5,7 @@ from collections import defaultdict
 from torchmetrics.image.kid import KernelInceptionDistance
 
 from .Metric import Metric
-from utils.regions import extract_regions
+from .utils.regions import extract_regions
 
 class KID(Metric):
     def __init__(self, device="cuda", subset_size=50):
