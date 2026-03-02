@@ -17,6 +17,7 @@ from pipelines.BackgroundCopy import BackgroundCopy
 from utils.image import get_square, create_comparison_canvas
 from utils.interactive import init_callback
 from evaluation.Evaluator import Evaluator
+from evaluations.utils.directory_iterator import mask_pair_generator
 
 pipelines: dict[str, Vanilla] = {
     "vanilla": Vanilla,
@@ -35,36 +36,22 @@ def read_file(file_path):
     except Exception as e:
         return f"An unexpected error occurred: {e}"
         
-def mask_pair_generator(directory):
-    """
-    Yields (source_pil, mask_pil, prompt, filename) for every sample.
-    """
-    files = os.listdir(directory)
-    base_images = [f for f in files if ".mask." not in f and f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-
-    for filename in base_images:
-        name_part, ext = os.path.splitext(filename)
-        mask_filename = f"{name_part}.mask{ext}"
-        prompt_filename = f"{name_part}.txt"
-        
-        src_path = os.path.join(directory, filename)
-        mask_path = os.path.join(directory, mask_filename)
-        prompt_path = os.path.join(directory, prompt_filename)
-
-        src_obj = Image.open(src_path)
-        mask_obj = Image.open(mask_path) if os.path.exists(mask_path) else get_square()
-        prompt = read_file(prompt_path) if os.path.exists(prompt_path) else ""
-            
-        yield src_obj, mask_obj, prompt, filename
-
 def run_pipeline(
         pipeline_name="vanilla", 
         src="./media", 
         dst="./results", 
         interactive=False, 
-        model_id = "sd2-community/stable-diffusion-2-base"):
+        model_id = "sd2-community/stable-diffusion-2-base",
+        skip_existing = False):
     
     pipeline = pipelines[pipeline_name](model_id, dtype=torch.float16)
+    
+    if torch.cuda.is_available():
+        gpu = torch.cuda.get_device_properties(torch.cuda.current_device())
+        print(f"GPU: {gpu.name} ({gpu.total_memory / 1024**3:.1f} GB)")
+    else:
+        print("No GPU available, running on CPU")
+    
 
     kwargs = {
         "callback": init_callback(pipeline),
@@ -72,6 +59,11 @@ def run_pipeline(
     } if interactive else {}
 
     for source, mask, prompt, file_name in mask_pair_generator(src):
+        output_path = os.path.join(dst, pipeline_name, file_name)
+        if skip_existing and os.path.exists(output_path):
+            print(f"Skipping {file_name} (already exists)...")
+            continue
+        
         print(f"Processing {file_name}...")
         result = pipeline.inpaint(source, mask, prompt, num_inference_steps=100, **kwargs)
         
@@ -83,7 +75,7 @@ def run_pipeline(
         Path(os.path.join(dst, pipeline_name)).mkdir(parents=True, exist_ok=True)
         name, extension = os.path.splitext(file_name)
         
-        result.convert('RGB').save(os.path.join(dst, pipeline_name, file_name))
+        result.convert('RGB').save(output_path)
         final_strip.convert('RGB').save(os.path.join(dst, pipeline_name, f'{name}.compare{extension}'))
 
 if __name__ == "__main__":
@@ -98,6 +90,7 @@ if __name__ == "__main__":
     parser.add_argument("--interactive", 
                         action=argparse.BooleanOptionalAction, 
                         help="Use this flag to watch diffusion process (slows performance)")
+    parser.add_argument("--skip-existing", action="store_true", help="Skip files that have already been generated")
     args = parser.parse_args()
     
     load_dotenv()
@@ -117,4 +110,5 @@ if __name__ == "__main__":
         run_pipeline(pipeline_name=args.pipeline, 
                      src=args.src, 
                      dst=args.dst, 
-                     interactive=args.interactive)
+                     interactive=args.interactive,
+                     skip_existing=args.skip_existing)

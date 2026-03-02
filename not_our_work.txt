@@ -1,2 +1,5 @@
-pipelines/VanillaPipline.py
-Pip
+binarize_masks.py
+download_dataset.py
+invert.py
+pipelines/utils/conversions.py
+utils/image.py

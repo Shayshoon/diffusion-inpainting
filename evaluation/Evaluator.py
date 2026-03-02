@@ -1,27 +1,31 @@
+import os
+import json
 from typing import List
-
 from tqdm import tqdm
+
+from PIL import Image
+
 from .Metric import Metric
-from evaluation.Dataset import Dataset
-from pipelines.Vanilla import Vanilla
+from utils.directory_iterator import mask_pair_generator
 
 class Evaluator:
-    def __init__(self, pipeline: Vanilla, metrics: List[Metric]):
-        self.pipeline = pipeline
-        self.metrics = metrics
-        
-    def run(self, dataset: Dataset):
+    def __init__(self, metrics: List[Metric]):
+        self.metrics  = metrics
+
+    def run(self, src, dst):
         for metric in self.metrics:
             metric.reset()
 
-        for i, sample in tqdm(enumerate(dataset), desc=f"Evaluating {type(self.pipeline).__name__} pipeline:"):
-            output = self.pipeline.inpaint(sample['source'], sample['mask'], sample['prompt'])
+        for target, mask, prompt, filename in tqdm(
+            mask_pair_generator(src),
+            desc=f"Evaluating {type(self.pipeline).__name__} pipeline:",
+        ):
+            sample_name, extension = os.path.splitext(filename)
+            output_path = os.path.join(dst, filename)
             
             for metric in self.metrics:
-                metric.update(sample['source'], sample['mask'], sample['prompt'], output)
-
-            if (i>50 and i % 5 == 0):
-                with open(f'{type(self.pipeline).__name__}_checkpoints.txt', 'w+') as file:
-                    file.write(str({ metric.get_name(): metric.compute() for metric in self.metrics }))
-                    
-        return { metric.get_name: metric.compute() for metric in self.metrics }
+                metric.update(
+                    target, mask, prompt, Image.open(output_path)
+                )
+                
+        return {metric.get_name(): metric.compute() for metric in self.metrics}

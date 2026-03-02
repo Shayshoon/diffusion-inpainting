@@ -51,7 +51,7 @@ class BackgroundReconstruction(Vanilla):
         scaling_factor = vae.config.scaling_factor
         known_region_weight = 100.0
         learning_rate = 0.0001
-        num_steps = 50
+        num_steps = 75
 
         optimizer = torch.optim.Adam(
             params_to_optimize, 

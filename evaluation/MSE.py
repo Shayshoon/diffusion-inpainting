@@ -1,42 +1,49 @@
 import torch
 import numpy as np
+from PIL import Image
+from collections import defaultdict
 
 from .Metric import Metric
-from PIL import Image
+
 
 class MSE(Metric):
+    REGIONS = ("full", "bbox", "masked", "unmasked")
+
     def __init__(self, device="cuda"):
         super().__init__(device=device)
-        self.samples = np.array([])
+        self.samples: dict[str, list] = defaultdict(list)
 
     def get_name(self):
         return "MSE"
-    
-    def compute(self):
-        return {"mean": np.mean(self.samples), "std": np.std(self.samples)}
 
     def reset(self):
-        self.samples = np.array([])
+        self.samples = defaultdict(list)
 
-    def update(self, 
-                original: Image.Image, 
-                mask: Image.Image, 
-                prompt: str, 
-                output: Image.Image):
-        src_tensor = self.transform(original.convert("RGB")).unsqueeze(0).to(self.device)
-        mask_tensor = self.transform(mask.convert("L")).unsqueeze(0).to(self.device)
-        output_tensor = self.transform(output.convert("RGB")).unsqueeze(0).to(self.device)
+    def compute(self):
+        return {region: self._compute_stats(self.samples[region])
+                for region in self.REGIONS}
 
-        binary_mask = (mask_tensor > 0.5).float()
-        
-        masked_src = src_tensor * binary_mask
-        masked_output = output_tensor * binary_mask
+    def update(self,
+               original: Image.Image,
+               mask: Image.Image,
+               prompt: str,
+               output: Image.Image):
+        src_t    = self.transform(original.convert("RGB")).unsqueeze(0).to(self.device)
+        mask_t   = self.transform(mask.convert("L")).unsqueeze(0).to(self.device)
+        output_t = self.transform(output.convert("RGB")).unsqueeze(0).to(self.device)
 
-        unmasked_pixels = binary_mask.sum()
-        squared_error = (masked_output - masked_src) ** 2
-        
-        MSE = (squared_error.sum() / unmasked_pixels).cpu().item() if unmasked_pixels != 0 else 0.0
-        
-        self.samples = np.insert(self.samples, 0, MSE)
-    
+        binary_mask = (mask_t > 0.5).float()
+        regions = self._extract_regions(src_t, output_t, binary_mask)
 
+        for region_name, (src_r, out_r, w) in regions.items():
+            se = (out_r - src_r) ** 2          # squared error per pixel/channel
+            if w is not None:
+                # broadcast weight over channel dim
+                w_r = w.expand_as(se)
+                n   = w_r.sum()
+                val = (se * w_r).sum() / n if n > 0 else 0.0
+            else:
+                val = se.mean()
+            self.samples[region_name].append(
+                val.cpu().item() if isinstance(val, torch.Tensor) else float(val)
+            )
