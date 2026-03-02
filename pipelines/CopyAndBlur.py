@@ -6,3 +6,4 @@ from pipelines.MaskBlur import MaskBlur
 
 # Everything is implemented by the parents of this class.
 class CopyAndBlur(BackgroundCopy, MaskBlur):
+    pass

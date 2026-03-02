@@ -1,5 +1,9 @@
 environment.local.yml
-
+*.gz
+*.tar
+pipe_results/*/*.jpg
+samples/*.jpg
+samples/*.txt
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -207,3 +211,4 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+slurm-359074.out

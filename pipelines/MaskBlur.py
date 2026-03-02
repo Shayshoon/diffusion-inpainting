@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from PIL import Image
 import torchvision.transforms as transforms
+from typing import Callable, Optional, Union, Tuple
 
 from pipelines.Vanilla import Vanilla
 from .utils.conversions import image_to_tensor, mask_to_tensor

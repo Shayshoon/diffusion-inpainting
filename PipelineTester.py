@@ -13,6 +13,8 @@ from huggingface_hub import login
 
 from evaluation import KID, MSE
 from pipelines.Vanilla import Vanilla
+from pipelines.CopyAndBlur import CopyAndBlur
+from pipelines.MaskBlur import MaskBlur
 from pipelines.BackgroundReconstruction import BackgroundReconstruction
 from pipelines.SimpleTDPaint import SimpleTDPaint
 from pipelines.BackgroundCopy import BackgroundCopy
@@ -22,6 +24,8 @@ from evaluation.Evaluator import Evaluator, PSNR, KID, SSIM, MSE, LPIPS, CLIP, G
 from evaluation.utils.directory_iterator import mask_pair_generator
 
 pipelines: dict[str, Vanilla] = {
+    "MaskBlur": MaskBlur,
+    "CopyAndBlur": CopyAndBlur,
     "vanilla": Vanilla,
     "BackgroundReconstruction": BackgroundReconstruction, 
     "BackgroundCopy": BackgroundCopy,
@@ -100,12 +104,13 @@ if __name__ == "__main__":
         evaluator = Evaluator([ MSE(),
                                 PSNR(),  
                                 SSIM(), 
-                                GDiff()
+                                GDiff(),
                                 KID(), 
                                 # CLIP(),
                                 LPIPS(), 
                             ])
-        
+
+        pipeline_name=args.pipeline
         dst = args.dst or 'pipe_results'
         source_dir = args.src or 'samples'
         dst_dir = os.path.join(dst, pipeline_name)

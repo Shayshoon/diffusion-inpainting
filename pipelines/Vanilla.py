@@ -45,7 +45,9 @@ class Vanilla:
     def postprocess_output(self, output, ps_mask, ps_image):
         return output
 
-    def noise_image(self, ls_image, t, device=self.device):
+    def noise_image(self, ls_image, t):
+        device = self.device
+
         noise = torch.randn_like(ls_image)
         
         scaled_t = int(t * self.known_noise_multiplier) if self.known_noise_multiplier != 0.0 else t
@@ -61,9 +63,14 @@ class Vanilla:
                 ls_input.float(),
                 t,
                 encoder_hidden_states=prompt_embeddings.float()
-            ).sample.to(dtype)
+            ).sample.to(self.dtype)
 
-    def diffuse(self, ls_image, ls_mask, prompt_embeddings, callback, callback_steps, device=self.device):
+    def diffuse(self, ls_image, ls_mask, prompt_embeddings, guidance_scale, callback, callback_steps):
+        device = self.device
+
+        # initialize result as noise in latent space
+        ls_result = torch.randn_like(ls_image) * self.pipe.scheduler.init_noise_sigma
+
         for i, t in enumerate(tqdm(self.pipe.scheduler.timesteps, desc="Inpainting")):
             # generate noise for known region
             ls_image_noised = self.noise_image(ls_image, t)
@@ -115,16 +122,13 @@ class Vanilla:
             mode="nearest"
             ).clamp(0, 1)
         
-        # initialize result as noise in latent space
-        ls_result = torch.randn_like(ls_image) * self.pipe.scheduler.init_noise_sigma
-
         self.pipe.scheduler.set_timesteps(num_inference_steps)
 
         # encode prompt
         positive_embeddings, negative_embeddings = self.pipe.encode_prompt(prompt, device, 1, True)
         prompt_embeddings = torch.cat([negative_embeddings, positive_embeddings]).to(dtype)
 
-        ls_result = self.diffuse(ls_image, ls_mask, prompt_embeddings, callback, callback_steps)
+        ls_result = self.diffuse(ls_image, ls_mask, prompt_embeddings, guidance_scale, callback, callback_steps)
 
         ls_result = (1 - ls_mask) * ls_result + ls_mask * ls_image
 
