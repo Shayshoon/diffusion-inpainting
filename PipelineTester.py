@@ -5,8 +5,6 @@ from typing import List
 from PIL import Image
 from dotenv import load_dotenv
 import pandas as pd
-import datetime
-import csv
 
 import torch
 from huggingface_hub import login
@@ -17,7 +15,7 @@ from pipelines.CopyAndBlur import CopyAndBlur
 from pipelines.MaskBlur import MaskBlur
 from pipelines.BackgroundReconstruction import BackgroundReconstruction
 from pipelines.SimpleTDPaint import SimpleTDPaint
-from pipelines.LatentPaint import LatentPaint
+# from pipelines.LatentPaint import LatentPaint
 from pipelines.BackgroundCopy import BackgroundCopy
 from utils.image import create_comparison_canvas
 from utils.interactive import init_callback
@@ -31,7 +29,7 @@ pipelines: dict[str, Vanilla] = {
     "BackgroundReconstruction": BackgroundReconstruction, 
     "BackgroundCopy": BackgroundCopy,
     "SimpleTDPaint": SimpleTDPaint, 
-    "LatentPaint": LatentPaint, 
+    # "LatentPaint": LatentPaint, 
     }
 
 def run_pipeline(
@@ -103,25 +101,21 @@ if __name__ == "__main__":
                      interactive=args.interactive,
                      skip_existing=args.skip_existing)
     else:
-        evaluator = Evaluator([ MSE(),
-                                PSNR(),  
-                                SSIM(), 
-                                GDiff(),
-                                KID(), 
-                                # CLIP(),
-                                LPIPS(), 
-                            ])
-
-        pipeline_name=args.pipeline
+        pipeline_name = args.pipeline
         dst = args.dst or 'pipe_results'
         source_dir = args.src or 'samples'
-        dst_dir = os.path.join(dst, pipeline_name)
         csv_path = os.path.join(dst, 'evaluation_results.csv')
+        dst_dir = os.path.join(dst, pipeline_name)
+        results = []
 
-        evaluation_results = evaluator.run(source_dir, dst_dir, pipeline_name)
-        all_results = pd.concat([
-            evaluator.run(source_dir, os.path.join(dst, pipeline_name), pipeline_name)
-            for pipeline_name in pipelines.keys()
-        ])
+        for pipeline_name in pipelines.keys():
+            evaluator = Evaluator([MSE(), PSNR(), SSIM(), GDiff(), KID(), LPIPS()])
+            
+            result = evaluator.run(source_dir, dst_dir, pipeline_name)
+            results.append(result)
+            
+            # backup after each run
+            pd.concat(results).to_csv(csv_path)
 
+        all_results = pd.concat(results)
         all_results.to_csv(csv_path)
