@@ -3,6 +3,7 @@ import numpy as np
 import torchvision.transforms as transforms
 from PIL import Image
 
+from collections import defaultdict
 from abc import ABC, abstractmethod
 
 class Metric(ABC):
