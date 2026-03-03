@@ -101,20 +101,17 @@ if __name__ == "__main__":
                      interactive=args.interactive,
                      skip_existing=args.skip_existing)
     else:
-        pipeline_name = args.pipeline
         dst = args.dst or 'pipe_results'
         source_dir = args.src or 'samples'
         csv_path = os.path.join(dst, 'evaluation_results.csv')
-        dst_dir = os.path.join(dst, pipeline_name)
         results = []
 
         for pipeline_name in pipelines.keys():
+            dst_dir = os.path.join(dst, pipeline_name)
             evaluator = Evaluator([MSE(), PSNR(), SSIM(), GDiff(), KID(), LPIPS()])
             
             result = evaluator.run(source_dir, dst_dir, pipeline_name)
             results.append(result)
-            
-            # backup after each run
             pd.concat(results).to_csv(csv_path)
 
         all_results = pd.concat(results)
