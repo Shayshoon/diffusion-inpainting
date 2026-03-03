@@ -1,5 +1,12 @@
 import os
-from PIL import Image
+from PIL import Image, ImageDraw
+
+def get_square():
+    mask = Image.new("L", (512, 512), 255)
+    draw = ImageDraw.Draw(mask)
+    draw.rectangle([150, 150, 350, 350], fill=0)
+    
+    return mask
 
 def read_file(file_path):
     try:

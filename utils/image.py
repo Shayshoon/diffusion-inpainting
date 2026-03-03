@@ -49,13 +49,6 @@ def create_comparison_canvas(source_img, mask_img,
     draw.text((x_pos, y_pos), text_label, fill=(0, 0, 0, 255), font=font)
 
     return canvas
-
-def get_square():
-    mask = Image.new("L", (512, 512), 255)
-    draw = ImageDraw.Draw(mask)
-    draw.rectangle([150, 150, 350, 350], fill=0)
-    
-    return mask
     
 def get_grid(width=512, height=512):
     """

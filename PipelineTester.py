@@ -17,8 +17,9 @@ from pipelines.CopyAndBlur import CopyAndBlur
 from pipelines.MaskBlur import MaskBlur
 from pipelines.BackgroundReconstruction import BackgroundReconstruction
 from pipelines.SimpleTDPaint import SimpleTDPaint
+from pipelines.LatentPaint import LatentPaint
 from pipelines.BackgroundCopy import BackgroundCopy
-from utils.image import get_square, create_comparison_canvas
+from utils.image import create_comparison_canvas
 from utils.interactive import init_callback
 from evaluation.Evaluator import Evaluator, PSNR, KID, SSIM, MSE, LPIPS, CLIP, GDiff
 from evaluation.utils.directory_iterator import mask_pair_generator
@@ -30,6 +31,7 @@ pipelines: dict[str, Vanilla] = {
     "BackgroundReconstruction": BackgroundReconstruction, 
     "BackgroundCopy": BackgroundCopy,
     "SimpleTDPaint": SimpleTDPaint, 
+    "LatentPaint": LatentPaint, 
     }
 
 def run_pipeline(
