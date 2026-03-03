@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from PIL import Image
 from collections import defaultdict
-from torchmetrics import StructuralSimilarityIndexMeasure
+from torchmetrics.image import StructuralSimilarityIndexMeasure
 
 from .Metric import Metric
 from .utils.regions import extract_regions
