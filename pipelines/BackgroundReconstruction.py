@@ -37,7 +37,7 @@ class BackgroundReconstruction(Vanilla):
         params_to_optimize = list(vae.decoder.parameters())
 
         # # optimize decoder
-        self.vae.decoder.requires_grad_(True)
+        vae.decoder.requires_grad_(True)
         vae.decoder.train()
 
         # init optimizer as stated in the paper
