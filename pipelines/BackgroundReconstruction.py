@@ -16,7 +16,7 @@ class BackgroundReconstruction(Vanilla):
 
     def reset_vae(self):
         self.pipe.vae.decoder.load_state_dict(self.vae_backup)
-        self.pipe.vae.to(self.dtype)
+        self.pipe.vae = self.pipe.vae.to(torch.float32)
         
     def postprocess(self,
                     z_0: torch.Tensor,   # edited image latents [B, C, H, W]
@@ -25,8 +25,8 @@ class BackgroundReconstruction(Vanilla):
                     plot=False
                 ):
         device = self.device
+        vae_type = self.pipe.vae.dtype
         self.reset_vae()
-        self.pipe.vae.to(torch.float32)
         vae = self.pipe.vae
 
         # prepare for optimization
@@ -64,15 +64,17 @@ class BackgroundReconstruction(Vanilla):
                 loss_unmasked = F.mse_loss(decoded * m, x * m)
                 
                 total_loss = loss_masked + (known_region_weight * loss_unmasked)
-
+                
                 total_loss.backward()
                 optimizer.step()
+
+                del decoded, loss_masked, loss_unmasked, total_loss
             
         # toggle evaluation mode back on
         vae.decoder.eval()
         vae.decoder.requires_grad_(False)
-        self.pipe.vae.to(self.dtype)
+        self.pipe.vae = self.pipe.vae.to(vae_type)
 
-        del optimizer, params_to_optimize, loss_masked, loss_unmasked, total_loss
+        del optimizer, params_to_optimize, x_hat
         torch.cuda.empty_cache()
         gc.collect()

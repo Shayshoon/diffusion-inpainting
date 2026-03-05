@@ -122,6 +122,12 @@ class Vanilla:
 
         ls_result = (1 - ls_mask) * ls_result + ls_mask * ls_image
 
+        # Free diffusion tensors BEFORE postprocess runs backward()
+        del ls_noise, prompt_embeddings, positive_embeddings, negative_embeddings
+        del ls_image, ls_mask
+        torch.cuda.empty_cache()
+
+
         self.postprocess(ls_result, ps_image, ps_mask)
         output = self.decode_latents(ls_result)
         output = self.postprocess_output(output, ps_mask, ps_image)
