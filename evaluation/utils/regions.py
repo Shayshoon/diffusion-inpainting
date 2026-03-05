@@ -33,6 +33,7 @@ def extract_regions(src_tensor: torch.Tensor,
 
     # --- bounding box + masked area ---
     bbox = mask_bbox(binary_mask)
+    inv_mask = 1.0 - binary_mask
     if bbox is None:
         regions["bbox"] = (src_tensor, output_tensor, None)
         regions["masked"] = (src_tensor, output_tensor, inv_mask)
@@ -40,7 +41,6 @@ def extract_regions(src_tensor: torch.Tensor,
         r0, r1, c0, c1 = bbox
         bounded_src = src_tensor[:, :, r0:r1, c0:c1] if src_tensor is not None else None
         bounded_output = output_tensor[:, :, r0:r1, c0:c1]
-        inv_mask = 1.0 - binary_mask
         
         regions["bbox"] = (bounded_src, bounded_output, None)
         regions["masked"] = (bounded_src, bounded_output, inv_mask)

@@ -34,17 +34,10 @@ class BackgroundReconstruction(Vanilla):
         m = m.detach().to(device=device, dtype=torch.float32)
         x = x.detach().to(device=device, dtype=torch.float32)
 
-        # optimize only necessary parts to save time
-        params_to_optimize = list(vae.decoder.conv_out.parameters()) + \
-                             list(vae.decoder.mid_block.parameters())
-        
-        # freeze everything else
-        vae.decoder.requires_grad_(False)
-        for p in params_to_optimize:
-            p.requires_grad = True
+        params_to_optimize = list(vae.decoder.parameters())
 
         # # optimize decoder
-        # self.vae.decoder.requires_grad_(True)
+        self.vae.decoder.requires_grad_(True)
         vae.decoder.train()
 
         # init optimizer as stated in the paper

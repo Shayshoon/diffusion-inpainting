@@ -2,7 +2,7 @@ import torch
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
-from diffusers import DiffusionPipeline, DDIMScheduler, AutoencoderKL
+from diffusers import DiffusionPipeline, DDIMScheduler
 
 from typing import Callable, Optional, Union, Tuple
 
@@ -45,70 +45,43 @@ class Vanilla:
     def postprocess_output(self, output, ps_mask, ps_image):
         return output
 
-    def noise_image(self, ls_image, t):
+    def diffuse(self, ls_image, ls_mask, prompt_embeddings, ls_result, guidance_scale, callback, callback_steps):
         device = self.device
-
-        noise = torch.randn_like(ls_image)
-        
-        scaled_t = int(t * self.known_noise_multiplier) if self.known_noise_multiplier != 0.0 else t
-        t_tensor = torch.tensor([scaled_t], device=device)
-        ls_image_noised = self.pipe.scheduler.add_noise(ls_image, noise, t_tensor)
-
-        return ls_image_noised
-
-    def predict_noise(self, ls_input, t, prompt_embeddings):
-        # this is a problematic operation that is likely to produce NaN values if not handled correctly
-        # thats the reason we're using it with float32
-        return self.pipe.unet(
-                ls_input.float(),
-                t,
-                encoder_hidden_states=prompt_embeddings.float()
-            ).sample.to(self.dtype)
-    
-    def prepare_model_inputs(self, ls_image_noised, ls_mask, ls_result, t):
-        # blend condition with infered using mask
-        # 1 -> keep original, 0 -> inpaint
-        ls_blended = ((1 - ls_mask) * ls_result) + (ls_mask * ls_image_noised)
-
-        ls_unet_input = torch.cat([ls_blended] * 2)
-        ls_unet_input = self.pipe.scheduler.scale_model_input(ls_unet_input, t)
-
-        # to unet, pass scaled and blended input. to scheduler, pass blended input
-        return ls_unet_input, ls_blended
-
-    def diffuse(self, ls_image, ls_mask, prompt_embeddings, guidance_scale, callback, callback_steps):
-        device = self.device
-
-        # initialize result as noise in latent space
-        ls_result = torch.randn_like(ls_image) * self.pipe.scheduler.init_noise_sigma
 
         for i, t in enumerate(tqdm(self.pipe.scheduler.timesteps, desc="Inpainting")):
             # generate noise for known region
-            ls_image_noised = self.noise_image(ls_image, t)
+            noise = torch.randn_like(ls_image)
+        
+            scaled_t = int(t * self.known_noise_multiplier) if self.known_noise_multiplier != 0.0 else t
+            t_tensor = torch.tensor([scaled_t], device=device)
+            ls_image_noised = self.pipe.scheduler.add_noise(ls_image, noise, t_tensor)
             
-            ls_unet_input, ls_scheduler_input = self.prepare_model_inputs(ls_image_noised, ls_mask, ls_result, t)
+            # 1 -> keep original, 0 -> inpaint
+            ls_blended = ((1 - ls_mask) * ls_result) + (ls_mask * ls_image_noised)
+
+            ls_unet_input = torch.cat([ls_blended] * 2)
+            ls_unet_input = self.pipe.scheduler.scale_model_input(ls_unet_input, t)
 
             # predict noise
-            noise_pred = self.predict_noise(ls_unet_input, t, prompt_embeddings)
+            # this is a problematic operation that is likely to produce NaN values if not handled correctly
+            # thats the reason we're using it with float32
+            noise_pred = self.pipe.unet(
+                ls_unet_input.float(),
+                t,
+                encoder_hidden_states=prompt_embeddings.float()
+            ).sample.to(self.dtype)
 
             # Classifier free guidance
             noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
             noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
 
-            ls_result = self.pipe.scheduler.step(noise_pred, t, ls_scheduler_input).prev_sample
+            ls_result = self.pipe.scheduler.step(noise_pred, t, ls_blended).prev_sample
             
             # callback used for interactive mode
             if callback is not None and i % callback_steps == 0:
-                callback(i, t, self.decode_latents(ls_result))
-
+                img = self.decode_latents(ls_result)
+                callback(i, t, img)
         return ls_result
-
-    def prepare_mask(self, ps_mask, shape):
-        return torch.nn.functional.interpolate(
-            ps_mask, 
-            size=shape,
-            mode="nearest"
-            ).clamp(0, 1)
 
     @torch.no_grad()
     def inpaint(self, 
@@ -130,15 +103,22 @@ class Vanilla:
         ls_image = self.pipe.vae.config.scaling_factor * ls_image
 
         # encode mask
-        ls_mask = self.prepare_mask(ps_mask, ls_image.shape[2:])
+        ls_mask = torch.nn.functional.interpolate(
+            ps_mask, 
+            size=ls_image.shape[2:], 
+            mode="nearest"
+            ).clamp(0, 1)
         
+        # initialize result as noise in latent space
+        ls_noise = torch.randn_like(ls_image) * self.pipe.scheduler.init_noise_sigma
+
         self.pipe.scheduler.set_timesteps(num_inference_steps)
 
         # encode prompt
         positive_embeddings, negative_embeddings = self.pipe.encode_prompt(prompt, device, 1, True)
         prompt_embeddings = torch.cat([negative_embeddings, positive_embeddings]).to(dtype)
 
-        ls_result = self.diffuse(ls_image, ls_mask, prompt_embeddings, guidance_scale, callback, callback_steps)
+        ls_result = self.diffuse(ls_image, ls_mask, prompt_embeddings, ls_noise, guidance_scale, callback, callback_steps)
 
         ls_result = (1 - ls_mask) * ls_result + ls_mask * ls_image
 
@@ -152,4 +132,4 @@ class Vanilla:
         image_out = self.pipe.numpy_to_pil(output)[0]
         
         return image_out
-    
+

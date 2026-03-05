@@ -14,6 +14,7 @@ from pipelines.Vanilla import Vanilla
 from pipelines.CopyAndBlur import CopyAndBlur
 from pipelines.MaskBlur import MaskBlur
 from pipelines.BackgroundReconstruction import BackgroundReconstruction
+from pipelines.BackgroundReconstructionLite import BackgroundReconstructionLite
 from pipelines.SimpleTDPaint import SimpleTDPaint
 # from pipelines.LatentPaint import LatentPaint
 from pipelines.BackgroundCopy import BackgroundCopy
@@ -27,6 +28,7 @@ pipelines: dict[str, Vanilla] = {
     "CopyAndBlur": CopyAndBlur,
     "vanilla": Vanilla,
     "BackgroundReconstruction": BackgroundReconstruction, 
+    "BackgroundReconstructionLite": BackgroundReconstructionLite, 
     "BackgroundCopy": BackgroundCopy,
     "SimpleTDPaint": SimpleTDPaint, 
     # "LatentPaint": LatentPaint, 
