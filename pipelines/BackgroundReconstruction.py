@@ -1,3 +1,4 @@
+import gc
 from matplotlib import pyplot as plt
 import torch
 import torch.nn.functional as F
@@ -29,7 +30,8 @@ class BackgroundReconstruction(Vanilla):
         vae = self.pipe.vae
 
         # prepare for optimization
-        x_hat = self.decode_latents(z_0).to(torch.float32)
+        with torch.no_grad():
+            x_hat = self.decode_latents(z_0).detach().to(torch.float32)
         z_0 = z_0.detach().to(device=device, dtype=torch.float32)
         m = m.detach().to(device=device, dtype=torch.float32)
         x = x.detach().to(device=device, dtype=torch.float32)
@@ -51,9 +53,6 @@ class BackgroundReconstruction(Vanilla):
             lr=learning_rate
         )
 
-        # dict to track training progress
-        history = {"total": [], "masked": [], "unmasked": []}
-
         with torch.enable_grad():
             for i in tqdm(range(num_steps), desc="Optimizing weights:"):
                 optimizer.zero_grad()
@@ -66,28 +65,14 @@ class BackgroundReconstruction(Vanilla):
                 
                 total_loss = loss_masked + (known_region_weight * loss_unmasked)
 
-                if plot:
-                    history["total"].append(total_loss.item())
-                    history["masked"].append(loss_masked.item())
-                    history["unmasked"].append(loss_unmasked.item())
-                
                 total_loss.backward()
                 optimizer.step()
-        
-        # just for debugging
-        if plot:
-            plt.figure(figsize=(10, 5))
-            plt.plot(history["total"], label="Total Loss", color='black', linestyle='--')
-            plt.plot(history["masked"], label="Masked Loss", color='blue')
-            plt.plot(history["unmasked"], label="Unmasked Loss", color='red')
-            plt.yscale('log')
-            plt.xlabel("Iteration")
-            plt.ylabel("Loss (Log Scale)")
-            plt.legend()
-            plt.grid(True, which="both", ls="-", alpha=0.5)
-            plt.show()
             
         # toggle evaluation mode back on
         vae.decoder.eval()
         vae.decoder.requires_grad_(False)
         self.pipe.vae.to(self.dtype)
+
+        del optimizer, params_to_optimize, loss_masked, loss_unmasked, total_loss
+        torch.cuda.empty_cache()
+        gc.collect()
