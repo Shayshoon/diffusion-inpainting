@@ -47,10 +47,12 @@ For better performance with huggingface API, set in `.env` file `HF_TOKEN=<huggi
 To run pipeline:
 `python PipelineTester.py <flags>`
 
-| flag         | default value | type                | description           |
-|--------------|---------------|---------------------|-----------------------|
-| `--pipeline` | `vanilla`     | `vanilla\|TDPaint` | The pipeline to run   |
-| `--src`      | `./media`     | str                 | Source media dir      |
-| `--dst`      | `./results`   | str                 | Destination media dir |
-| `--metric`   | -             | boolean             | Use to run metrics    |
+| flag         | default value | type                | description           | options		         |
+|--------------|---------------|---------------------|-----------------------|-----------------------|
+| `--pipeline` | `vanilla`     | str                 | The pipeline to run   | `vanila` `TDPaint` `MaskBlur` `BackgroundCopy` `BackgroundReconstruction` `CopyAndBlur`   |
+| `--src`      | `./media`     | str                 | Source media dir      | directory      |
+| `--dst`      | `./results`   | str                 | Destination media dir | directory |
+| `--evaluate`   | `False`             | boolean             | Use to run evaluation    | -    |
+| `--interactive`   | `False`             | boolean             | Use to run interactive mode    | -    |
+| `--skip-existing`   | `False`             | boolean             | Skip files that already have existing generation in destination dir    | -    |
 
