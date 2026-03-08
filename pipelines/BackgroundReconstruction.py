@@ -54,7 +54,7 @@ class BackgroundReconstruction(Vanilla):
         )
 
         with torch.enable_grad():
-            for i in tqdm(range(num_steps), desc="Optimizing weights:"):
+            for i in tqdm(range(num_steps), leave=False, desc="Optimizing weights:"):
                 optimizer.zero_grad()
                 
                 decoded = vae.decode(z_0 / scaling_factor, return_dict=False)[0]
@@ -75,6 +75,7 @@ class BackgroundReconstruction(Vanilla):
         vae.decoder.requires_grad_(False)
         self.pipe.vae = self.pipe.vae.to(vae_type)
 
+        optimizer.state.clear()
         del optimizer, params_to_optimize, x_hat
         torch.cuda.empty_cache()
         gc.collect()
